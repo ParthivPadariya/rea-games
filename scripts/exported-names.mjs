@@ -2,6 +2,8 @@
 // for scripts/bundle.mjs. A renamed export is given as `c: b`, ready for the bundler's `return { … }`.
 // A declaration may bind several names (`export const W = 10, H = 20;`): every binding is kept.
 // A comma only separates bindings at depth zero, not inside a string, a comment, (), [] or {}.
+// A line break ends a declaration unless the line ends with an operator or `,`, or the next line of code starts
+// with a binary operator, `,`, `.`, `?` or `:`, as in JavaScript; `++` and `--` there start a new statement.
 // Any other export (`export default`, `export *`, `export { … } from`) is left for the bundler to refuse.
 // A local export list, possibly over several lines; a list followed by `from` re-exports and is not matched.
 export const EXPORT_LIST = /^export\s*\{([^}]*)\}(?!\s*from\b)[ \t]*;?[ \t]*$/gm;
@@ -11,6 +13,7 @@ const DECL = /^export\s+(?:async\s+)?(?:function\*?|class)\s+([A-Za-z_$][\w$]*)/
 const VARS = /^export\s+(?:const|let|var)\s+/gm;
 const NAME = /^[A-Za-z_$][\w$]*/;
 const CONTINUES = /[,=+\-*/%?:|&!<>(\[{.]$/;
+const LEADS = /^(?:[,.?:*%|&^=<>]|\+(?!\+)|-(?!-)|\/(?![/*])|!=)/;
 
 export function exportedNames(src) {
   const found = [];
@@ -55,9 +58,19 @@ function bindings(src, i) {
     else if (")]}".includes(c)) depth--;
     else if (depth === 0 && c === ",") { expectName = true; i++; continue; }
     else if (depth === 0 && c === ";") break;
-    else if (depth === 0 && c === "\n" && !CONTINUES.test(last)) break;
+    else if (depth === 0 && c === "\n" && !CONTINUES.test(last) && !LEADS.test(nextCode(src, i + 1))) break;
     if (!/\s/.test(c)) last = c;
     i++;
   }
   return out;
+}
+
+// The first characters of code from i on, past whitespace and comments.
+function nextCode(src, i) {
+  for (;;) {
+    while (i < src.length && /\s/.test(src[i])) i++;
+    if (src.startsWith("//", i)) { while (i < src.length && src[i] !== "\n") i++; continue; }
+    if (src.startsWith("/*", i)) { const end = src.indexOf("*/", i + 2); i = end < 0 ? src.length : end + 2; continue; }
+    return src.slice(i, i + 3);
+  }
 }

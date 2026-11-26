@@ -27,8 +27,7 @@ error from the edit itself.
 **A play page drew nothing after bundling.** `scripts/bundle.mjs` took a module's exports from the first name on each
 `export const` line, so `export const W = 640, H = 480` exported `W` only, `H` was `undefined` in `docs/play/paddles.html`
 and the canvas had no height, with no error. `scripts/exported-names.mjs` now keeps every name (see the multi-name
-export entry below), but a value continued on a line that starts with an operator, such as `+ 10`, still ends the
-declaration early, so open the bundled page, not only `ports/web`.
+export entry below), but still open the bundled page, not only `ports/web`.
 
 **`in` found keys the port never printed.** `firstDiff` checked `k in a`, which is true for inherited names, so a port
 that printed a `constructor` key was reported as `.constructor: undefined != 1` instead of a missing key. Check own keys
@@ -77,3 +76,9 @@ begins, `Error: boom` or `AssertionError [ERR_ASSERTION]: ...`, but not past an 
 another program's output against what it really prints.
 
 **Third-party libraries can consume `Math.random()` before the game starts.** jQuery 1.8.3 calls `Math.random()` twice during initialization, which prepended two stray draws to `tape` and shifted every mine placement. Reset the RNG tape after page load finishes so `tape` records only calls from the game itself.
+
+**A line that started with an operator ended a multi-name export.** `scripts/exported-names.mjs` ended a declaration at a
+line break unless the line ended with an operator or `,`, so `export const W = 640` followed by `  + 10, H = 480;` gave
+`W` only, while JavaScript reads both lines as one declaration and exports `H` too. A line break now also continues the
+declaration when the next line of code starts with a binary operator, `,`, `.`, `?` or `:`, as it does in JavaScript;
+`++` and `--` there still start a new statement. `test/exported-names.test.mjs` covers both.

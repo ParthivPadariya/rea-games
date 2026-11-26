@@ -19,6 +19,20 @@ test("commas inside calls, literals, strings and comments do not start a new bin
   assert.deepEqual(exportedNames("export const M = {\n  a: 1,\n  b: [2, 3],\n};\n"), ["M"]);
 });
 
+test("a line that starts with an operator continues the declaration above it", () => {
+  assert.deepEqual(exportedNames("export const W = 640\n  + 10, H = 480;\n"), ["W", "H"]);
+  assert.deepEqual(exportedNames("export const A = 1\n  , B = 2;\n"), ["A", "B"]);
+  assert.deepEqual(exportedNames("export const C = ok\n  ? 1\n  : 2, D = 3;\n"), ["C", "D"]);
+  assert.deepEqual(exportedNames("export const E = list\n  .length, F = 4;\n"), ["E", "F"]);
+  assert.deepEqual(exportedNames("export const G = 640 // width\n  // and the border\n  + 10, H = 480;\n"), ["G", "H"]);
+});
+
+test("a line break before a new statement still ends the declaration", () => {
+  assert.deepEqual(exportedNames("export const A = 1\nexport const B = 2\n"), ["A", "B"]);
+  assert.deepEqual(exportedNames("export let n = 0\n++n, log(n)\n"), ["n"]);
+  assert.deepEqual(exportedNames("export const A = 1\n// , B\nconst C = 3, D = 4\n"), ["A"]);
+});
+
 test("functions and classes are listed in source order", () => {
   assert.deepEqual(
     exportedNames("export const K = 1;\nexport function f(a, b) {}\nexport async function g() {}\nexport class C {}\n"),
